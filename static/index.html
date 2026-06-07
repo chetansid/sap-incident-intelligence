@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SAP Incident Intelligence</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; height: 100vh; display: flex; flex-direction: column; }
+    header { background: #c0392b; color: white; padding: 16px 24px; }
+    header h1 { font-size: 18px; font-weight: 600; }
+    header p { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+    .main { display: flex; flex: 1; overflow: hidden; }
+    .left { flex: 1; display: flex; flex-direction: column; padding: 20px; gap: 14px; overflow-y: auto; }
+    .right { width: 320px; background: white; border-left: 1px solid #e0e0e0; display: flex; flex-direction: column; }
+    .right-header { padding: 14px 16px; border-bottom: 1px solid #e0e0e0; font-size: 13px; font-weight: 600; color: #333; }
+    .history-list { flex: 1; overflow-y: auto; padding: 8px; }
+    .history-item { padding: 10px 12px; border-radius: 8px; cursor: pointer; margin-bottom: 6px; border: 1px solid #e0e0e0; background: #fafafa; }
+    .history-item:hover { background: #f0f0f0; }
+    .history-item.active { background: #fce8e6; border-color: #c0392b; }
+    .history-module { font-size: 11px; font-weight: 600; color: #c0392b; margin-bottom: 3px; }
+    .history-error { font-size: 12px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .history-time { font-size: 10px; color: #999; margin-top: 3px; }
+    .input-card { background: white; border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .input-card label { font-size: 12px; font-weight: 600; color: #555; display: block; margin-bottom: 8px; }
+    textarea { width: 100%; padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 13px; font-family: 'Courier New', monospace; resize: vertical; min-height: 100px; outline: none; }
+    textarea:focus { border-color: #c0392b; }
+    .btn { width: 100%; padding: 12px; background: #c0392b; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; margin-top: 10px; }
+    .btn:hover { background: #a93226; }
+    .btn:disabled { background: #ccc; cursor: not-allowed; }
+    .result-card { background: white; border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: none; }
+    .result-card.show { display: block; }
+    .severity-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .severity-badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .sev-LOW { background: #e6f4ea; color: #137333; }
+    .sev-MEDIUM { background: #fef3e2; color: #b45309; }
+    .sev-HIGH { background: #fce8e6; color: #c0392b; }
+    .sev-CRITICAL { background: #c0392b; color: white; }
+    .module-tag { font-size: 12px; color: #666; }
+    .result-section { margin-bottom: 14px; }
+    .result-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #888; margin-bottom: 6px; }
+    .result-text { font-size: 13px; color: #333; line-height: 1.6; }
+    .steps-list { list-style: none; padding: 0; }
+    .steps-list li { display: flex; gap: 10px; padding: 6px 0; border-bottom: 0.5px solid #eee; font-size: 13px; color: #333; line-height: 1.5; }
+    .steps-list li:last-child { border-bottom: none; }
+    .step-num { width: 20px; height: 20px; border-radius: 50%; background: #c0392b; color: white; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+    .loading { text-align: center; padding: 20px; color: #888; font-size: 13px; display: none; }
+    .loading.show { display: block; }
+    .sample-errors { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .sample { font-size: 11px; padding: 4px 10px; border: 1px solid #e0e0e0; border-radius: 20px; cursor: pointer; color: #555; background: #fafafa; }
+    .sample:hover { border-color: #c0392b; color: #c0392b; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>SAP Incident Intelligence System</h1>
+    <p>AI-powered root cause analysis for SAP errors</p>
+  </header>
+
+  <div class="main">
+    <div class="left">
+      <div class="input-card">
+        <label>Paste SAP error message or system log</label>
+        <textarea id="errorInput" placeholder="e.g. DBIF_RSQL_SQL_ERROR - SQL error ORA-01653: unable to extend table..."></textarea>
+        <div style="margin-top:8px;">
+          <span style="font-size:11px;color:#888;">Try a sample:</span>
+          <div class="sample-errors">
+            <div class="sample" onclick="useSample(this)">ORA-01653 tablespace error</div>
+            <div class="sample" onclick="useSample(this)">ABAP runtime error DUMP</div>
+            <div class="sample" onclick="useSample(this)">RFC connection failure</div>
+            <div class="sample" onclick="useSample(this)">Work process restart loop</div>
+          </div>
+        </div>
+        <button class="btn" onclick="analyze()" id="analyzeBtn">Analyze Incident</button>
+      </div>
+
+      <div class="loading" id="loading">
+        Analyzing incident with AI... this may take a few seconds.
+      </div>
+
+      <div class="result-card" id="resultCard">
+        <div class="severity-bar">
+          <span class="severity-badge" id="severityBadge"></span>
+          <span class="module-tag" id="moduleTag"></span>
+          <span style="font-size:11px;color:#999;margin-left:auto;" id="incidentId"></span>
+        </div>
+        <div class="result-section">
+          <p class="result-label">Root Cause</p>
+          <p class="result-text" id="rootCause"></p>
+        </div>
+        <div class="result-section">
+          <p class="result-label">Business Impact</p>
+          <p class="result-text" id="impact"></p>
+        </div>
+        <div class="result-section">
+          <p class="result-label">Resolution Steps</p>
+          <ul class="steps-list" id="steps"></ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="right-header">Incident History</div>
+      <div class="history-list" id="historyList"></div>
+    </div>
+  </div>
+
+<script>
+  const samples = {
+    "ORA-01653 tablespace error": "DBIF_RSQL_SQL_ERROR - SQL error ORA-01653: unable to extend table SAPR3.MSEG by 1024 in tablespace PSAPEL30D occurred.",
+    "ABAP runtime error DUMP": "Runtime Errors: SYNTAX_ERROR. Occurred on: 11/15/2024. Short text: Syntax error in program ZREPORT_CUSTOM. ABAP dump created.",
+    "RFC connection failure": "ERROR: RFC destination SM_CLNT100_TRUSTED failed. Error: SYSTEM_FAILURE - Partner not reached. Connection to SAP system failed.",
+    "Work process restart loop": "Workprocess 4 (DIA) restarted 5 times in 10 minutes. System log shows: WP has been killed due to timeout. ABAP session terminated."
+  };
+
+  async function analyze() {
+    const input = document.getElementById('errorInput').value.trim();
+    if (!input) return;
+
+    const btn = document.getElementById('analyzeBtn');
+    btn.disabled = true;
+    document.getElementById('loading').classList.add('show');
+    document.getElementById('resultCard').classList.remove('show');
+
+    try {
+      const res = await fetch('/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error_message: input })
+      });
+      const data = await res.json();
+      showResult(data);
+      loadHistory();
+    } catch (err) {
+      alert('Analysis failed. Please try again.');
+    }
+
+    btn.disabled = false;
+    document.getElementById('loading').classList.remove('show');
+  }
+
+  function showResult(data) {
+    document.getElementById('severityBadge').textContent = data.severity;
+    document.getElementById('severityBadge').className = 'severity-badge sev-' + data.severity;
+    document.getElementById('moduleTag').textContent = 'Module: ' + data.sap_module;
+    document.getElementById('incidentId').textContent = 'Incident #' + data.id;
+    document.getElementById('rootCause').textContent = data.root_cause;
+    document.getElementById('impact').textContent = data.impact;
+
+    const stepsList = document.getElementById('steps');
+    stepsList.innerHTML = '';
+    const steps = Array.isArray(data.resolution_steps)
+      ? data.resolution_steps
+      : data.resolution_steps.split('\n').filter(s => s.trim());
+
+    steps.forEach((step, i) => {
+      const li = document.createElement('li');
+      const clean = step.replace(/^\d+\.\s*/, '');
+      li.innerHTML = `<div class="step-num">${i+1}</div><span>${clean}</span>`;
+      stepsList.appendChild(li);
+    });
+
+    document.getElementById('resultCard').classList.add('show');
+  }
+
+  async function loadHistory() {
+    const res = await fetch('/incidents');
+    const incidents = await res.json();
+    const list = document.getElementById('historyList');
+    list.innerHTML = '';
+    incidents.forEach(inc => {
+      const div = document.createElement('div');
+      div.className = 'history-item';
+      div.innerHTML = `
+        <div class="history-module">${inc.sap_module || 'UNKNOWN'}</div>
+        <div class="history-error">${inc.error_message}</div>
+        <div class="history-time">${new Date(inc.created_at).toLocaleString()}</div>
+      `;
+      div.onclick = () => loadIncident(inc.id);
+      list.appendChild(div);
+    });
+  }
+
+  async function loadIncident(id) {
+    document.querySelectorAll('.history-item').forEach(el => el.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    const res = await fetch('/incidents/' + id);
+    const inc = await res.json();
+    showResult({
+      ...inc,
+      severity: 'HIGH'
+    });
+  }
+
+  function useSample(el) {
+    document.getElementById('errorInput').value = samples[el.textContent] || el.textContent;
+  }
+
+  // Update main.py to serve this UI
+  loadHistory();
+</script>
+</body>
+</html>
