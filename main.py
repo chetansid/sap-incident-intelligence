@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from database import engine, get_db, Base
 from models import Incident
 from agent import analyze_incident
@@ -40,7 +41,22 @@ def root():
 def analyze(request: IncidentRequest, db: Session = Depends(get_db)):
     if not request.error_message.strip():
         raise HTTPException(status_code=400, detail="Error message cannot be empty")
-    
+    # Step 1 — Check if we've seen a similar error before
+    existing = db.query(Incident).filter(
+        Incident.error_message.ilike(f"%{request.error_message[:50]}%")
+    ).first()
+
+    if existing:
+        return {
+            "id": existing.id,
+            "sap_module": existing.sap_module,
+            "root_cause": existing.root_cause,
+            "impact": existing.impact,
+            "resolution_steps": existing.resolution_steps,
+            "severity": "HIGH",
+            "source": "cache"  # Tells you this came from DB, not AI
+        }
+
     try:
         # Run AI analysis
         result = analyze_incident(request.error_message)
@@ -65,7 +81,8 @@ def analyze(request: IncidentRequest, db: Session = Depends(get_db)):
         "root_cause": result.get("root_cause"),
         "impact": result.get("impact"),
         "resolution_steps": result.get("resolution_steps"),
-        "severity": result.get("severity")
+        "severity": result.get("severity"),
+        "source": "ai"
     }
 
 @app.get("/incidents")

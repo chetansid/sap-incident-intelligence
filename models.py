@@ -12,3 +12,4 @@ class Incident(Base):
     impact = Column(Text)
     resolution_steps = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    source = Column(String(20))  # "cache" or "ai"
