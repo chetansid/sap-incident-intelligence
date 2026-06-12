@@ -19,7 +19,7 @@ app = FastAPI(title="SAP Incident Intelligence System")
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-@app.get("/ui")
+@app.get("/ui2")
 def ui():
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
