@@ -47,6 +47,12 @@ def analyze(request: IncidentRequest, db: Session = Depends(get_db)):
     ).first()
 
     if existing:
+        # Normalize resolution_steps from DB format to list
+        steps = existing.resolution_steps
+        if isinstance(steps, str):
+            # Remove { } and split by comma+quote
+            steps = steps.strip('{}').replace('","', '|||').replace('"', '')
+            steps = [s.strip() for s in steps.split('|||') if s.strip()]
         return {
             "id": existing.id,
             "sap_module": existing.sap_module,

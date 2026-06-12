@@ -10,6 +10,7 @@ class Incident(Base):
     sap_module = Column(String(50))
     root_cause = Column(Text)
     impact = Column(Text)
-    resolution_steps = Column(Text)
+    resolution_steps = Column(JSON)  # Store as JSON for easier parsing
+    source = Column(String(20), default="ai")  # "cache" or "ai"
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    source = Column(String(20))  # "cache" or "ai"
+    
