@@ -82,6 +82,7 @@
         <div class="severity-bar">
           <span class="severity-badge" id="severityBadge"></span>
           <span class="module-tag" id="moduleTag"></span>
+          <span id="sourceTag" style="font-size:11px;padding:2px 8px;border-radius:20px;margin-left:8px;"></span>
           <span style="font-size:11px;color:#999;margin-left:auto;" id="incidentId"></span>
         </div>
         <div class="result-section">
@@ -159,7 +160,17 @@
       li.innerHTML = `<div class="step-num">${i+1}</div><span>${clean}</span>`;
       stepsList.appendChild(li);
     });
-
+    
+    const sourceTag = document.getElementById('sourceTag');
+    if (data.source === 'cache') {
+      sourceTag.textContent = '⚡ From cache';
+      sourceTag.style.background = '#e6f4ea';
+      sourceTag.style.color = '#137333';
+    } else {
+      sourceTag.textContent = '🤖 From AI';
+      sourceTag.style.background = '#e8f0fe';
+      sourceTag.style.color = '#1a73e8';
+    }
     document.getElementById('resultCard').classList.add('show');
   }
 
