@@ -3,6 +3,7 @@ from fastapi.responses import FileResponse
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi import Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -20,6 +21,9 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/ui")
 def ui():
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
     return FileResponse("static/index.html")
 
 class IncidentRequest(BaseModel):
